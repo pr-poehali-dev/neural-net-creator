@@ -1,87 +1,116 @@
-"""Генерация текста и кода через OpenAI GPT-4o-mini."""
+"""Генерация текста и кода через бесплатный Hugging Face Inference API (без ключа)."""
 import json
-import os
-from openai import OpenAI
+import urllib.request
+import urllib.error
+
+
+HF_API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3"
+
+
+def hf_generate(prompt: str, max_tokens: int = 800) -> str:
+    payload = json.dumps({
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": max_tokens,
+            "temperature": 0.7,
+            "do_sample": True,
+            "return_full_text": False,
+        }
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        HF_API_URL,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    with urllib.request.urlopen(req, timeout=25) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+
+    if isinstance(data, list) and data:
+        return data[0].get("generated_text", "").strip()
+    raise ValueError(f"Unexpected response: {data}")
 
 
 def handler(event: dict, context) -> dict:
+    """Генерация текста и кода через Mistral-7B (бесплатно, без ключа)."""
     cors = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
     }
 
-    if event.get('httpMethod') == 'OPTIONS':
-        return {'statusCode': 200, 'headers': cors, 'body': ''}
+    if event.get("httpMethod") == "OPTIONS":
+        return {"statusCode": 200, "headers": cors, "body": ""}
 
     try:
-        body = json.loads(event.get('body') or '{}')
-        gen_type = body.get('type', 'text')
-        prompt = body.get('prompt', '').strip()
-        style = body.get('style', '')
-        language = body.get('language', 'Python')
+        body = json.loads(event.get("body") or "{}")
+        gen_type = body.get("type", "text")
+        prompt = body.get("prompt", "").strip()
+        style = body.get("style", "")
+        language = body.get("language", "Python")
 
         if not prompt:
             return {
-                'statusCode': 400,
-                'headers': cors,
-                'body': json.dumps({'error': 'Prompt is required'})
+                "statusCode": 400,
+                "headers": cors,
+                "body": json.dumps({"error": "Prompt is required"}),
             }
 
-        client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
-
-        if gen_type == 'code':
-            system = (
-                f"Ты — эксперт-программист. Пиши только чистый код на {language} без объяснений. "
-                f"Код должен быть рабочим, с комментариями на русском языке. "
-                f"Не используй markdown-блоки (```), только сам код."
+        if gen_type == "code":
+            full_prompt = (
+                f"<s>[INST] Ты эксперт-программист. Напиши только чистый рабочий код на {language} "
+                f"без объяснений и без markdown-блоков. Комментарии пиши на русском.\n\n"
+                f"Задача: {prompt} [/INST]"
             )
-            user_msg = f"Напиши код на {language}: {prompt}"
-            max_tokens = 1200
+            max_tokens = 900
 
-        else:  # text
+        else:
             style_map = {
-                'Статья': 'экспертная статья с заголовками и подзаголовками',
-                'Пост для соцсетей': 'яркий цепляющий пост для соцсетей с эмодзи',
-                'Email': 'профессиональное деловое письмо',
-                'Сценарий': 'сценарий с диалогами и ремарками',
-                'Описание товара': 'продающее описание товара с преимуществами',
-                'Идеи и брейншторм': 'список из 7-10 конкретных идей с кратким описанием каждой',
+                "Статья": "экспертная статья с заголовками и подзаголовками",
+                "Пост для соцсетей": "яркий цепляющий пост с эмодзи",
+                "Email": "профессиональное деловое письмо",
+                "Сценарий": "сценарий с диалогами и ремарками",
+                "Описание товара": "продающее описание товара с преимуществами",
+                "Идеи и брейншторм": "список из 7-10 идей с кратким описанием каждой",
             }
-            style_desc = style_map.get(style, 'качественный текст')
-            system = (
-                f"Ты — профессиональный копирайтер. Пиши на русском языке. "
-                f"Формат: {style_desc}. Текст должен быть живым, читабельным и ценным."
+            style_desc = style_map.get(style, "качественный текст")
+            full_prompt = (
+                f"<s>[INST] Ты профессиональный копирайтер. Пиши на русском языке. "
+                f"Формат: {style_desc}.\n\n{prompt} [/INST]"
             )
-            user_msg = prompt
-            max_tokens = 1000
+            max_tokens = 700
 
-        response = client.chat.completions.create(
-            model='gpt-4o-mini',
-            messages=[
-                {'role': 'system', 'content': system},
-                {'role': 'user', 'content': user_msg},
-            ],
-            max_tokens=max_tokens,
-            temperature=0.7,
-        )
-
-        result = response.choices[0].message.content or ''
-        tokens_used = response.usage.total_tokens if response.usage else 0
+        result = hf_generate(full_prompt, max_tokens)
 
         return {
-            'statusCode': 200,
-            'headers': cors,
-            'body': json.dumps({
-                'result': result,
-                'tokens': tokens_used,
-                'model': 'gpt-4o-mini',
-            })
+            "statusCode": 200,
+            "headers": cors,
+            "body": json.dumps({
+                "result": result,
+                "tokens": len(result.split()),
+                "model": "Mistral-7B-Instruct",
+            }),
         }
 
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="ignore")
+        # Model loading — cold start
+        if e.code == 503:
+            return {
+                "statusCode": 503,
+                "headers": cors,
+                "body": json.dumps({"error": "Модель загружается, попробуй через 20 секунд"}),
+            }
+        return {
+            "statusCode": 500,
+            "headers": cors,
+            "body": json.dumps({"error": f"HF error {e.code}: {err_body[:200]}"}),
+        }
     except Exception as e:
         return {
-            'statusCode': 500,
-            'headers': cors,
-            'body': json.dumps({'error': str(e)})
+            "statusCode": 500,
+            "headers": cors,
+            "body": json.dumps({"error": str(e)}),
         }

@@ -64,7 +64,7 @@ const GeneratorPage = () => {
         setTokensUsed(data.tokens || 0);
       }
     } catch {
-      setError('Не удалось подключиться к серверу');
+      setError('Не удалось подключиться к серверу. Попробуй ещё раз.');
     } finally {
       clearInterval(progressInterval);
       setProgress(100);
@@ -136,7 +136,7 @@ const GeneratorPage = () => {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono-plex mb-4"
             style={{ background: 'rgba(0, 229, 255, 0.08)', border: '1px solid rgba(0, 229, 255, 0.2)', color: 'var(--neon-cyan)' }}>
             <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--neon-green)' }} />
-            GPT-4O-MINI · ОНЛАЙН
+            MISTRAL-7B · БЕСПЛАТНО
           </div>
           <h1 className="font-orbitron font-bold text-3xl md:text-4xl gradient-text">ГЕНЕРАТОР</h1>
         </div>
@@ -362,7 +362,7 @@ const GeneratorPage = () => {
                       </div>
                     </div>
                     <div className="text-center">
-                      <p className="font-mono-plex text-sm neon-text-cyan mb-1">GPT-4O-MINI РАБОТАЕТ</p>
+                      <p className="font-mono-plex text-sm neon-text-cyan mb-1">MISTRAL-7B РАБОТАЕТ</p>
                       <p className="text-xs text-muted-foreground">{Math.round(progress)}%</p>
                     </div>
                   </div>
