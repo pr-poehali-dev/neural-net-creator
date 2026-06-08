@@ -1,9 +1,8 @@
 import { useState, useRef } from 'react';
 import Icon from '@/components/ui/icon';
+import { generate } from '@/lib/generator';
 
 type GenType = 'text' | 'code' | 'image';
-
-const GENERATE_URL = 'https://functions.poehali.dev/de5c0df8-a940-41f9-b6ad-cd88b8e76974';
 
 const codeLanguages = ['Python', 'JavaScript', 'TypeScript', 'Go', 'Rust', 'Java', 'C++', 'Swift', 'PHP', 'SQL', 'Bash'];
 const textStyles = ['Статья', 'Пост для соцсетей', 'Email', 'Сценарий', 'Описание товара', 'Идеи и брейншторм'];
@@ -44,27 +43,16 @@ const GeneratorPage = () => {
     }, 300);
 
     try {
-      const res = await fetch(GENERATE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: activeType === 'image' ? 'text' : activeType,
-          prompt,
-          style: selectedStyle,
-          language: selectedLang,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || data.error) {
-        setError(data.error || 'Ошибка сервера');
-      } else {
-        setResult(data.result || '');
-        setTokensUsed(data.tokens || 0);
-      }
-    } catch {
-      setError('Не удалось подключиться к серверу. Попробуй ещё раз.');
+      const data = await generate(
+        activeType === 'image' ? 'text' : activeType,
+        prompt,
+        selectedStyle,
+        selectedLang,
+      );
+      setResult(data.result);
+      setTokensUsed(data.tokens);
+    } catch (e) {
+      setError(String(e));
     } finally {
       clearInterval(progressInterval);
       setProgress(100);
@@ -136,7 +124,7 @@ const GeneratorPage = () => {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono-plex mb-4"
             style={{ background: 'rgba(0, 229, 255, 0.08)', border: '1px solid rgba(0, 229, 255, 0.2)', color: 'var(--neon-cyan)' }}>
             <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--neon-green)' }} />
-            MISTRAL-7B · БЕСПЛАТНО
+            NEXUSGEN · ЛОКАЛЬНО · БЕЗ API
           </div>
           <h1 className="font-orbitron font-bold text-3xl md:text-4xl gradient-text">ГЕНЕРАТОР</h1>
         </div>
@@ -362,7 +350,7 @@ const GeneratorPage = () => {
                       </div>
                     </div>
                     <div className="text-center">
-                      <p className="font-mono-plex text-sm neon-text-cyan mb-1">MISTRAL-7B РАБОТАЕТ</p>
+                      <p className="font-mono-plex text-sm neon-text-cyan mb-1">NEXUSGEN РАБОТАЕТ</p>
                       <p className="text-xs text-muted-foreground">{Math.round(progress)}%</p>
                     </div>
                   </div>
