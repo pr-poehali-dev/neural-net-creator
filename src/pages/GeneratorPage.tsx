@@ -1,37 +1,14 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Icon from '@/components/ui/icon';
 
 type GenType = 'text' | 'code' | 'image';
 
-const codeLanguages = ['Python', 'JavaScript', 'TypeScript', 'Go', 'Rust', 'Java', 'C++', 'Swift', 'Kotlin', 'PHP', 'SQL', 'Bash'];
+const GENERATE_URL = 'https://functions.poehali.dev/de5c0df8-a940-41f9-b6ad-cd88b8e76974';
 
+const codeLanguages = ['Python', 'JavaScript', 'TypeScript', 'Go', 'Rust', 'Java', 'C++', 'Swift', 'PHP', 'SQL', 'Bash'];
 const textStyles = ['Статья', 'Пост для соцсетей', 'Email', 'Сценарий', 'Описание товара', 'Идеи и брейншторм'];
 
-const mockCodeResult = `def fibonacci(n: int) -> list[int]:
-    """Генерирует последовательность Фибоначчи до n элементов."""
-    if n <= 0:
-        return []
-    elif n == 1:
-        return [0]
-    
-    sequence = [0, 1]
-    while len(sequence) < n:
-        sequence.append(sequence[-1] + sequence[-2])
-    
-    return sequence
-
-# Пример использования
-result = fibonacci(10)
-print(f"Последовательность: {result}")
-# → [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]`;
-
-const mockTextResult = `# Искусственный интеллект: революция уже началась
-
-Мы живём в эпоху, когда границы между возможным и невозможным стремительно исчезают. Нейросети научились писать код, создавать картины и вести осмысленные диалоги...
-
-**Что изменится в ближайшие 5 лет?**
-
-По прогнозам аналитиков, к 2030 году ИИ будет участвовать в создании более 70% цифрового контента. Это не угроза — это инструмент для тех, кто умеет им пользоваться.`;
+const RUNNABLE_IN_BROWSER = ['JavaScript', 'TypeScript'];
 
 const GeneratorPage = () => {
   const [activeType, setActiveType] = useState<GenType>('text');
@@ -41,6 +18,11 @@ const GeneratorPage = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState('');
   const [progress, setProgress] = useState(0);
+  const [error, setError] = useState('');
+  const [tokensUsed, setTokensUsed] = useState(0);
+  const [runOutput, setRunOutput] = useState('');
+  const [isRunning, setIsRunning] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const tabs: { id: GenType; label: string; icon: string; color: string }[] = [
     { id: 'text', label: 'Текст', icon: 'FileText', color: 'var(--neon-violet)' },
@@ -48,27 +30,102 @@ const GeneratorPage = () => {
     { id: 'image', label: 'Изображение', icon: 'Image', color: 'var(--neon-cyan)' },
   ];
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!prompt.trim()) return;
     setIsGenerating(true);
     setResult('');
+    setError('');
+    setRunOutput('');
+    setTokensUsed(0);
     setProgress(0);
 
-    const interval = setInterval(() => {
-      setProgress(p => {
-        if (p >= 95) { clearInterval(interval); return p; }
-        return p + Math.random() * 12;
-      });
-    }, 200);
+    const progressInterval = setInterval(() => {
+      setProgress(p => p < 85 ? p + Math.random() * 8 : p);
+    }, 300);
 
-    setTimeout(() => {
-      clearInterval(interval);
+    try {
+      const res = await fetch(GENERATE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: activeType === 'image' ? 'text' : activeType,
+          prompt,
+          style: selectedStyle,
+          language: selectedLang,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        setError(data.error || 'Ошибка сервера');
+      } else {
+        setResult(data.result || '');
+        setTokensUsed(data.tokens || 0);
+      }
+    } catch {
+      setError('Не удалось подключиться к серверу');
+    } finally {
+      clearInterval(progressInterval);
       setProgress(100);
       setIsGenerating(false);
-      if (activeType === 'code') setResult(mockCodeResult);
-      else if (activeType === 'text') setResult(mockTextResult);
-    }, 2500);
+    }
   };
+
+  const handleRunJS = () => {
+    setIsRunning(true);
+    setRunOutput('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><script>
+      const logs = [];
+      console.log = (...a) => logs.push('▶ ' + a.map(String).join(' '));
+      console.error = (...a) => logs.push('✖ ' + a.map(String).join(' '));
+      console.warn = (...a) => logs.push('⚠ ' + a.map(String).join(' '));
+      try {
+        ${result}
+        window.parent.postMessage({ type: 'nexus-run', logs, error: null }, '*');
+      } catch(e) {
+        window.parent.postMessage({ type: 'nexus-run', logs, error: e.message }, '*');
+      }
+    </script></body></html>`;
+
+    const onMsg = (e: MessageEvent) => {
+      if (e.data?.type !== 'nexus-run') return;
+      window.removeEventListener('message', onMsg);
+      const { logs, error: runErr } = e.data;
+      if (runErr) {
+        setRunOutput(`✖ Ошибка: ${runErr}`);
+      } else if (logs.length > 0) {
+        setRunOutput(logs.join('\n'));
+      } else {
+        setRunOutput('✓ Выполнено (нет вывода в консоль)');
+      }
+      setIsRunning(false);
+    };
+
+    window.addEventListener('message', onMsg);
+    if (iframeRef.current) iframeRef.current.srcdoc = html;
+    setTimeout(() => { window.removeEventListener('message', onMsg); setIsRunning(false); }, 8000);
+  };
+
+  const handleRunPython = () => {
+    const prints = result.match(/print\(([^)]+)\)/g) || [];
+    const output = prints.length > 0
+      ? prints.map(m => '▶ ' + m.replace(/^print\(['"]?/, '').replace(/['"]?\)$/, '')).join('\n')
+      : '✓ Нет print() — добавь вывод в код';
+    setRunOutput(`⚙ Симуляция Python (браузер не поддерживает CPython):\n\n${output}`);
+  };
+
+  const handleRun = () => {
+    if (RUNNABLE_IN_BROWSER.includes(selectedLang)) {
+      handleRunJS();
+    } else {
+      handleRunPython();
+    }
+  };
+
+  const copyResult = () => { if (result) navigator.clipboard.writeText(result); };
+  const canRun = activeType === 'code' && !!result;
 
   return (
     <div className="min-h-screen pt-20 pb-24 md:pb-8 px-4 md:px-6">
@@ -79,7 +136,7 @@ const GeneratorPage = () => {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono-plex mb-4"
             style={{ background: 'rgba(0, 229, 255, 0.08)', border: '1px solid rgba(0, 229, 255, 0.2)', color: 'var(--neon-cyan)' }}>
             <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--neon-green)' }} />
-            НЕЙРОСЕТЬ ГОТОВА
+            GPT-4O-MINI · ОНЛАЙН
           </div>
           <h1 className="font-orbitron font-bold text-3xl md:text-4xl gradient-text">ГЕНЕРАТОР</h1>
         </div>
@@ -90,9 +147,9 @@ const GeneratorPage = () => {
           {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => { setActiveType(tab.id); setResult(''); }}
+              onClick={() => { setActiveType(tab.id); setResult(''); setRunOutput(''); setError(''); }}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 ${
-                activeType === tab.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                activeType === tab.id ? '' : 'text-muted-foreground hover:text-foreground'
               }`}
               style={activeType === tab.id ? {
                 background: `${tab.color}15`,
@@ -110,15 +167,14 @@ const GeneratorPage = () => {
           {/* Left: Input Panel */}
           <div className="md:col-span-2 space-y-4">
 
-            {/* Options */}
             {activeType === 'code' && (
               <div className="glass-card rounded-xl p-4">
-                <label className="text-xs font-mono-plex text-muted-foreground mb-3 block tracking-wider">ЯЗЫК ПРОГРАММИРОВАНИЯ</label>
-                <div className="grid grid-cols-3 gap-2">
+                <label className="text-xs font-mono-plex text-muted-foreground mb-3 block tracking-wider">ЯЗЫК</label>
+                <div className="grid grid-cols-3 gap-1.5">
                   {codeLanguages.map(lang => (
                     <button
                       key={lang}
-                      onClick={() => setSelectedLang(lang)}
+                      onClick={() => { setSelectedLang(lang); setRunOutput(''); }}
                       className={`px-2 py-1.5 rounded-lg text-xs font-mono-plex transition-all duration-200 ${
                         selectedLang === lang ? 'text-black font-bold' : 'text-muted-foreground hover:text-foreground'
                       }`}
@@ -130,13 +186,18 @@ const GeneratorPage = () => {
                     </button>
                   ))}
                 </div>
+                {RUNNABLE_IN_BROWSER.includes(selectedLang) && (
+                  <p className="mt-3 text-xs font-mono-plex opacity-50" style={{ color: 'var(--neon-green)' }}>
+                    ⚡ {selectedLang} поддерживает RUN в браузере
+                  </p>
+                )}
               </div>
             )}
 
             {activeType === 'text' && (
               <div className="glass-card rounded-xl p-4">
-                <label className="text-xs font-mono-plex text-muted-foreground mb-3 block tracking-wider">СТИЛЬ ТЕКСТА</label>
-                <div className="space-y-2">
+                <label className="text-xs font-mono-plex text-muted-foreground mb-3 block tracking-wider">ФОРМАТ</label>
+                <div className="space-y-1.5">
                   {textStyles.map(style => (
                     <button
                       key={style}
@@ -159,9 +220,9 @@ const GeneratorPage = () => {
 
             {activeType === 'image' && (
               <div className="glass-card rounded-xl p-4">
-                <label className="text-xs font-mono-plex text-muted-foreground mb-3 block tracking-wider">СТИЛЬ ИЗОБРАЖЕНИЯ</label>
+                <label className="text-xs font-mono-plex text-muted-foreground mb-3 block tracking-wider">СТИЛЬ</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {['Реализм', 'Аниме', 'Цифровое искусство', '3D рендер', 'Фото', 'Абстракция'].map(s => (
+                  {['Реализм', 'Аниме', 'Цифровое', '3D рендер', 'Фото', 'Абстракция'].map(s => (
                     <button key={s}
                       className="px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground transition-all"
                       style={{ background: 'rgba(255,255,255,0.04)' }}>
@@ -172,30 +233,31 @@ const GeneratorPage = () => {
               </div>
             )}
 
-            {/* Prompt Input */}
+            {/* Prompt */}
             <div className="glass-card rounded-xl p-4">
               <label className="text-xs font-mono-plex text-muted-foreground mb-3 block tracking-wider">
-                {activeType === 'image' ? 'ОПИСАНИЕ ИЗОБРАЖЕНИЯ' : activeType === 'code' ? 'ЗАДАЧА' : 'ТЕМА / ЗАДАНИЕ'}
+                {activeType === 'code' ? 'ЗАДАЧА' : activeType === 'image' ? 'ОПИСАНИЕ' : 'ТЕМА'}
               </label>
               <textarea
                 value={prompt}
                 onChange={e => setPrompt(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleGenerate(); }}
                 placeholder={
                   activeType === 'code'
-                    ? `Напиши функцию на ${selectedLang}...`
+                    ? `Напиши на ${selectedLang}: функцию для...`
                     : activeType === 'image'
-                    ? 'Опиши что хочешь увидеть...'
-                    : `Напиши ${selectedStyle.toLowerCase()} о...`
+                    ? 'Космический город, неоновые огни...'
+                    : `${selectedStyle} о...`
                 }
                 rows={5}
                 className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground resize-none outline-none leading-relaxed"
               />
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
-                <span className="text-xs text-muted-foreground font-mono-plex">{prompt.length} симв.</span>
-                <button
-                  onClick={() => setPrompt('')}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
+                <span className="text-xs text-muted-foreground font-mono-plex opacity-50">
+                  {prompt.length} симв. · Ctrl+Enter
+                </span>
+                <button onClick={() => setPrompt('')}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors">
                   Очистить
                 </button>
               </div>
@@ -225,58 +287,74 @@ const GeneratorPage = () => {
               )}
             </button>
 
-            {/* Progress bar */}
             {isGenerating && (
               <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                <div
-                  className="h-full progress-neon transition-all duration-300 rounded-full"
-                  style={{ width: `${progress}%` }}
-                />
+                <div className="h-full progress-neon transition-all duration-500 rounded-full"
+                  style={{ width: `${progress}%` }} />
               </div>
             )}
           </div>
 
           {/* Right: Result Panel */}
-          <div className="md:col-span-3">
-            <div className="glass-card rounded-xl overflow-hidden h-full min-h-[480px] flex flex-col">
-              {/* Result header */}
+          <div className="md:col-span-3 flex flex-col gap-4">
+            <div className="glass-card rounded-xl overflow-hidden flex flex-col" style={{ minHeight: 360 }}>
+              {/* Header */}
               <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ background: result ? 'var(--neon-green)' : 'rgba(255,255,255,0.2)' }} />
-                  <span className="text-xs font-mono-plex text-muted-foreground">РЕЗУЛЬТАТ</span>
+                  <div className="w-2 h-2 rounded-full transition-all duration-500" style={{
+                    background: error ? '#ff4444' : result ? 'var(--neon-green)' : 'rgba(255,255,255,0.2)',
+                    boxShadow: result && !error ? '0 0 8px var(--neon-green)' : 'none'
+                  }} />
+                  <span className="text-xs font-mono-plex text-muted-foreground">
+                    РЕЗУЛЬТАТ{tokensUsed > 0 ? ` · ${tokensUsed} токенов` : ''}
+                  </span>
                 </div>
                 {result && (
                   <div className="flex items-center gap-2">
-                    <button className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs neon-btn">
+                    {canRun && (
+                      <button
+                        onClick={handleRun}
+                        disabled={isRunning}
+                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold font-mono-plex tracking-wider transition-all duration-200 disabled:opacity-50"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(0,255,136,0.25), rgba(0,200,100,0.15))',
+                          border: '1px solid rgba(0, 255, 136, 0.6)',
+                          color: 'var(--neon-green)',
+                          boxShadow: isRunning ? 'none' : '0 0 16px rgba(0, 255, 136, 0.3)',
+                        }}
+                      >
+                        {isRunning
+                          ? <><Icon name="Loader2" size={12} className="animate-spin" />  ЗАПУСК</>
+                          : <><Icon name="Play" size={13} />  RUN</>
+                        }
+                      </button>
+                    )}
+                    <button onClick={copyResult}
+                      className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs neon-btn">
                       <Icon name="Copy" size={12} />
                       Копировать
-                    </button>
-                    <button className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs neon-btn">
-                      <Icon name="Download" size={12} />
-                      Сохранить
                     </button>
                   </div>
                 )}
               </div>
 
+              {/* Content */}
               <div className="flex-1 p-5 overflow-auto">
-                {!result && !isGenerating && (
+                {!result && !isGenerating && !error && (
                   <div className="h-full flex flex-col items-center justify-center gap-4 text-center py-16">
                     <div className="w-20 h-20 rounded-2xl flex items-center justify-center animate-float"
                       style={{ background: 'rgba(0, 229, 255, 0.06)', border: '1px solid rgba(0, 229, 255, 0.15)' }}>
                       <Icon name="Sparkles" size={36} style={{ color: 'var(--neon-cyan)', opacity: 0.5 }} />
                     </div>
-                    <div>
-                      <p className="font-orbitron text-sm text-muted-foreground mb-1">ОЖИДАЮ ЗАПРОС</p>
-                      <p className="text-xs text-muted-foreground opacity-60">Введи описание и нажми «Сгенерировать»</p>
-                    </div>
+                    <p className="font-orbitron text-sm text-muted-foreground">ОЖИДАЮ ЗАПРОС</p>
+                    <p className="text-xs text-muted-foreground opacity-50">Введи описание и нажми «Сгенерировать»</p>
                   </div>
                 )}
 
                 {isGenerating && (
                   <div className="h-full flex flex-col items-center justify-center gap-6">
-                    <div className="relative">
-                      <div className="w-16 h-16 rounded-full animate-spin-slow"
+                    <div className="relative w-16 h-16">
+                      <div className="absolute inset-0 rounded-full animate-spin-slow"
                         style={{ background: 'conic-gradient(var(--neon-cyan), var(--neon-violet), transparent)' }} />
                       <div className="absolute inset-1 rounded-full flex items-center justify-center"
                         style={{ background: 'hsl(220, 20%, 7%)' }}>
@@ -284,28 +362,67 @@ const GeneratorPage = () => {
                       </div>
                     </div>
                     <div className="text-center">
-                      <p className="font-mono-plex text-sm neon-text-cyan mb-1">НЕЙРОСЕТЬ РАБОТАЕТ</p>
-                      <p className="text-xs text-muted-foreground">{Math.round(progress)}% завершено</p>
+                      <p className="font-mono-plex text-sm neon-text-cyan mb-1">GPT-4O-MINI РАБОТАЕТ</p>
+                      <p className="text-xs text-muted-foreground">{Math.round(progress)}%</p>
                     </div>
                   </div>
                 )}
 
-                {result && activeType !== 'image' && (
-                  <pre className={`text-sm leading-relaxed whitespace-pre-wrap text-foreground ${activeType === 'code' ? 'font-mono-plex code-block p-4' : 'font-ibm'}`}>
+                {error && !isGenerating && (
+                  <div className="flex flex-col items-center justify-center h-full gap-4 text-center py-10">
+                    <Icon name="AlertTriangle" size={36} style={{ color: '#ff4444' }} />
+                    <div>
+                      <p className="font-orbitron text-sm mb-2" style={{ color: '#ff4444' }}>ОШИБКА</p>
+                      <p className="text-sm text-muted-foreground max-w-xs">{error}</p>
+                    </div>
+                  </div>
+                )}
+
+                {result && !error && (
+                  <pre className={`text-sm leading-relaxed whitespace-pre-wrap text-foreground ${
+                    activeType === 'code' ? 'font-mono-plex code-block p-4' : 'font-ibm'
+                  }`}>
                     {result}
                   </pre>
                 )}
-
-                {result && activeType === 'image' && (
-                  <div className="flex items-center justify-center h-full">
-                    <div className="w-full aspect-square max-w-sm rounded-xl overflow-hidden"
-                      style={{ border: '1px solid rgba(0, 229, 255, 0.2)' }}>
-                      <img src="/placeholder.svg" alt="Generated" className="w-full h-full object-cover" />
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
+
+            {/* Console Output */}
+            {activeType === 'code' && (runOutput || isRunning) && (
+              <div className="rounded-xl overflow-hidden animate-fade-in"
+                style={{ background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(0,255,136,0.25)' }}>
+                <div className="flex items-center gap-3 px-4 py-2.5 border-b border-white/5">
+                  <div className="flex gap-1.5">
+                    <div className="w-3 h-3 rounded-full" style={{ background: '#ff5f56' }} />
+                    <div className="w-3 h-3 rounded-full" style={{ background: '#ffbd2e' }} />
+                    <div className="w-3 h-3 rounded-full" style={{ background: 'var(--neon-green)', boxShadow: '0 0 6px var(--neon-green)' }} />
+                  </div>
+                  <span className="text-xs font-mono-plex text-muted-foreground">
+                    console · {selectedLang}
+                    {RUNNABLE_IN_BROWSER.includes(selectedLang) && (
+                      <span className="ml-2 opacity-50">· live sandbox</span>
+                    )}
+                  </span>
+                </div>
+                <div className="p-4 min-h-12">
+                  {isRunning ? (
+                    <span className="text-xs font-mono-plex flex items-center gap-2" style={{ color: 'var(--neon-green)' }}>
+                      <Icon name="Loader2" size={12} className="animate-spin" />
+                      Выполняю...
+                    </span>
+                  ) : (
+                    <pre className="text-xs font-mono-plex leading-relaxed whitespace-pre-wrap"
+                      style={{ color: runOutput.startsWith('✖') ? '#ff6b6b' : 'var(--neon-green)' }}>
+                      {runOutput}
+                    </pre>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Hidden sandbox iframe */}
+            <iframe ref={iframeRef} sandbox="allow-scripts" title="nexus-runner" className="hidden" />
           </div>
         </div>
       </div>
