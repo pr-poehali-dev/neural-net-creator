@@ -8,6 +8,48 @@ import ProfilePage from './ProfilePage';
 
 type Page = 'home' | 'generator' | 'history' | 'profile';
 
+const CreatorsBadge = () => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+      {open && (
+        <div
+          className="animate-fade-in rounded-2xl px-5 py-4 text-sm"
+          style={{
+            background: 'rgba(5, 8, 15, 0.95)',
+            border: '1px solid rgba(0,229,255,0.25)',
+            boxShadow: '0 0 30px rgba(0,229,255,0.1)',
+            backdropFilter: 'blur(20px)',
+            minWidth: 200,
+          }}
+        >
+          <p className="font-orbitron text-xs mb-2" style={{ color: 'var(--neon-cyan)', letterSpacing: '0.1em' }}>СОЗДАТЕЛЬ</p>
+          <p className="font-ibm font-semibold text-foreground text-base">Попов Николай</p>
+          <p className="text-muted-foreground text-xs mt-1 opacity-70">из гимназии</p>
+          <div className="mt-3 h-px w-full" style={{ background: 'linear-gradient(90deg, var(--neon-cyan), var(--neon-violet))' }} />
+          <p className="text-xs text-muted-foreground mt-2 opacity-50 font-mono-plex">NEXUS AI · 2025</p>
+        </div>
+      )}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold font-ibm transition-all duration-300"
+        style={{
+          background: open
+            ? 'linear-gradient(135deg, var(--neon-cyan), var(--neon-violet))'
+            : 'rgba(5,8,15,0.9)',
+          border: '1px solid rgba(0,229,255,0.35)',
+          color: open ? '#000' : 'var(--neon-cyan)',
+          boxShadow: '0 0 20px rgba(0,229,255,0.15)',
+          backdropFilter: 'blur(20px)',
+        }}
+      >
+        <span>✦</span>
+        Создатели
+      </button>
+    </div>
+  );
+};
+
 const Index = () => {
   const [activePage, setActivePage] = useState<Page>('home');
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
@@ -55,6 +97,7 @@ const Index = () => {
       <main className="relative z-10">
         {renderPage()}
       </main>
+      <CreatorsBadge />
     </div>
   );
 };

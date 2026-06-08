@@ -64,36 +64,45 @@ const GeneratorPage = () => {
     setIsRunning(true);
     setRunOutput('');
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><script>
+    // Собираем HTML конкатенацией чтобы </script> не закрыл тег раньше времени
+    const scriptOpen = '<scr' + 'ipt>';
+    const scriptClose = '</scr' + 'ipt>';
+    const userCode = result;
+
+    const html = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>'
+      + scriptOpen
+      + `
       const logs = [];
-      console.log = (...a) => logs.push('▶ ' + a.map(String).join(' '));
-      console.error = (...a) => logs.push('✖ ' + a.map(String).join(' '));
-      console.warn = (...a) => logs.push('⚠ ' + a.map(String).join(' '));
+      console.log = (...a) => { logs.push('▶ ' + a.map(v => typeof v === 'object' ? JSON.stringify(v) : String(v)).join(' ')); };
+      console.error = (...a) => { logs.push('✖ ' + a.map(String).join(' ')); };
+      console.warn = (...a) => { logs.push('⚠ ' + a.map(String).join(' ')); };
       try {
-        ${result}
-        window.parent.postMessage({ type: 'nexus-run', logs, error: null }, '*');
+        ${userCode}
+        window.parent.postMessage({ type: 'nexus-run', logs: logs, error: null }, '*');
       } catch(e) {
-        window.parent.postMessage({ type: 'nexus-run', logs, error: e.message }, '*');
+        window.parent.postMessage({ type: 'nexus-run', logs: logs, error: e.message }, '*');
       }
-    </script></body></html>`;
+      `
+      + scriptClose
+      + '</body></html>';
 
     const onMsg = (e: MessageEvent) => {
       if (e.data?.type !== 'nexus-run') return;
       window.removeEventListener('message', onMsg);
-      const { logs, error: runErr } = e.data;
+      const { logs, error: runErr } = e.data as { logs: string[]; error: string | null };
       if (runErr) {
-        setRunOutput(`✖ Ошибка: ${runErr}`);
+        setRunOutput('✖ Ошибка: ' + runErr);
       } else if (logs.length > 0) {
         setRunOutput(logs.join('\n'));
       } else {
-        setRunOutput('✓ Выполнено (нет вывода в консоль)');
+        setRunOutput('✓ Выполнено без вывода в консоль\n(добавь console.log() чтобы увидеть результат)');
       }
       setIsRunning(false);
     };
 
     window.addEventListener('message', onMsg);
     if (iframeRef.current) iframeRef.current.srcdoc = html;
-    setTimeout(() => { window.removeEventListener('message', onMsg); setIsRunning(false); }, 8000);
+    setTimeout(() => { window.removeEventListener('message', onMsg); setIsRunning(false); }, 10000);
   };
 
   const handleRunPython = () => {
@@ -366,12 +375,32 @@ const GeneratorPage = () => {
                   </div>
                 )}
 
-                {result && !error && (
+                {result && !error && activeType !== 'image' && (
                   <pre className={`text-sm leading-relaxed whitespace-pre-wrap text-foreground ${
                     activeType === 'code' ? 'font-mono-plex code-block p-4' : 'font-ibm'
                   }`}>
                     {result}
                   </pre>
+                )}
+
+                {activeType === 'image' && !isGenerating && (
+                  <div className="flex flex-col items-center justify-center h-full gap-5 py-10">
+                    <div className="relative w-64 h-64 rounded-2xl overflow-hidden"
+                      style={{ border: '1px solid rgba(0,229,255,0.25)' }}>
+                      <img src="/placeholder.svg" alt="Generated" className="w-full h-full object-cover opacity-60" />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3"
+                        style={{ background: 'rgba(5,8,15,0.7)' }}>
+                        <Icon name="Image" size={40} style={{ color: 'var(--neon-cyan)', opacity: 0.5 }} />
+                        <p className="font-orbitron text-xs text-center px-4" style={{ color: 'var(--neon-cyan)', opacity: 0.7 }}>
+                          ГЕНЕРАЦИЯ ИЗОБРАЖЕНИЙ<br/>ТРЕБУЕТ API-КЛЮЧ
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center max-w-xs opacity-60">
+                      Для работы этого раздела нужен ключ DALL·E или Stable Diffusion.
+                      Пока используй вкладки «Текст» или «Код».
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
