@@ -4,89 +4,51 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 220 20% 4%;
+    --foreground: 200 100% 95%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 220 20% 7%;
+    --card-foreground: 200 100% 95%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 220 20% 7%;
+    --popover-foreground: 200 100% 95%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 185 100% 55%;
+    --primary-foreground: 220 20% 4%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 270 80% 60%;
+    --secondary-foreground: 200 100% 95%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 20% 12%;
+    --muted-foreground: 200 30% 60%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 185 100% 55%;
+    --accent-foreground: 220 20% 4%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 80% 60%;
+    --destructive-foreground: 200 100% 95%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 220 30% 18%;
+    --input: 220 20% 10%;
+    --ring: 185 100% 55%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 220 20% 5%;
+    --sidebar-foreground: 200 100% 95%;
+    --sidebar-primary: 185 100% 55%;
+    --sidebar-primary-foreground: 220 20% 4%;
+    --sidebar-accent: 220 20% 10%;
+    --sidebar-accent-foreground: 200 100% 95%;
+    --sidebar-border: 220 30% 18%;
+    --sidebar-ring: 185 100% 55%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Custom neon colors */
+    --neon-cyan: #00e5ff;
+    --neon-violet: #a855f7;
+    --neon-green: #00ff88;
+    --neon-pink: #ff00aa;
+    --grid-color: rgba(0, 229, 255, 0.04);
   }
 }
 
@@ -97,5 +59,418 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: "IBM Plex Sans", sans-serif;
+    overflow-x: hidden;
   }
+
+  h1,
+  h2,
+  h3 {
+    font-family: "Orbitron", sans-serif;
+  }
+
+  code,
+  pre,
+  .font-mono {
+    font-family: "IBM Plex Mono", monospace;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--neon-cyan);
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: rgba(0, 229, 255, 0.3);
+    color: #fff;
+  }
+}
+
+@layer utilities {
+  .font-orbitron {
+    font-family: "Orbitron", sans-serif;
+  }
+  .font-ibm {
+    font-family: "IBM Plex Sans", sans-serif;
+  }
+  .font-mono-plex {
+    font-family: "IBM Plex Mono", monospace;
+  }
+
+  .neon-text-cyan {
+    color: var(--neon-cyan);
+    text-shadow:
+      0 0 20px rgba(0, 229, 255, 0.8),
+      0 0 40px rgba(0, 229, 255, 0.4);
+  }
+
+  .neon-text-violet {
+    color: var(--neon-violet);
+    text-shadow:
+      0 0 20px rgba(168, 85, 247, 0.8),
+      0 0 40px rgba(168, 85, 247, 0.4);
+  }
+
+  .neon-border {
+    border: 1px solid rgba(0, 229, 255, 0.3);
+    box-shadow:
+      0 0 15px rgba(0, 229, 255, 0.1),
+      inset 0 0 15px rgba(0, 229, 255, 0.05);
+  }
+
+  .neon-border-violet {
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    box-shadow:
+      0 0 15px rgba(168, 85, 247, 0.1),
+      inset 0 0 15px rgba(168, 85, 247, 0.05);
+  }
+
+  .neon-btn {
+    background: linear-gradient(
+      135deg,
+      rgba(0, 229, 255, 0.15),
+      rgba(168, 85, 247, 0.15)
+    );
+    border: 1px solid rgba(0, 229, 255, 0.5);
+    color: var(--neon-cyan);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .neon-btn::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(0, 229, 255, 0.2),
+      transparent
+    );
+    transition: left 0.5s ease;
+  }
+
+  .neon-btn:hover::before {
+    left: 100%;
+  }
+
+  .neon-btn:hover {
+    background: linear-gradient(
+      135deg,
+      rgba(0, 229, 255, 0.3),
+      rgba(168, 85, 247, 0.3)
+    );
+    box-shadow:
+      0 0 25px rgba(0, 229, 255, 0.4),
+      0 0 50px rgba(0, 229, 255, 0.2);
+    transform: translateY(-1px);
+  }
+
+  .neon-btn-solid {
+    background: linear-gradient(135deg, var(--neon-cyan), var(--neon-violet));
+    color: #000;
+    font-weight: 700;
+    border: none;
+    transition: all 0.3s ease;
+  }
+
+  .neon-btn-solid:hover {
+    box-shadow:
+      0 0 30px rgba(0, 229, 255, 0.6),
+      0 0 60px rgba(168, 85, 247, 0.4);
+    transform: translateY(-2px) scale(1.02);
+  }
+
+  .cyber-grid {
+    background-image:
+      linear-gradient(var(--grid-color) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 229, 255, 0.15);
+  }
+
+  .glass-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(0, 229, 255, 0.35);
+    box-shadow: 0 8px 40px rgba(0, 229, 255, 0.1);
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, var(--neon-cyan), var(--neon-violet));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .scanline::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
+    );
+    pointer-events: none;
+  }
+
+  .hover-scale {
+    transition: transform 0.2s ease;
+  }
+  .hover-scale:hover {
+    transform: scale(1.03);
+  }
+}
+
+/* Animations */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes pulse-neon {
+  0%,
+  100% {
+    box-shadow:
+      0 0 10px rgba(0, 229, 255, 0.3),
+      0 0 20px rgba(0, 229, 255, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 25px rgba(0, 229, 255, 0.7),
+      0 0 50px rgba(0, 229, 255, 0.35);
+  }
+}
+
+@keyframes glitch {
+  0%,
+  95%,
+  100% {
+    transform: translate(0);
+    filter: none;
+  }
+  96% {
+    transform: translate(-2px, 1px);
+    filter: hue-rotate(90deg);
+  }
+  97% {
+    transform: translate(2px, -1px);
+    filter: hue-rotate(-90deg);
+  }
+  98% {
+    transform: translate(-1px, 2px);
+  }
+  99% {
+    transform: translate(1px, -2px);
+    filter: hue-rotate(45deg);
+  }
+}
+
+@keyframes orbit {
+  from {
+    transform: rotate(0deg) translateX(120px) rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg) translateX(120px) rotate(-360deg);
+  }
+}
+
+@keyframes scan-line {
+  0% {
+    top: -100%;
+  }
+  100% {
+    top: 200%;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes blink {
+  0%,
+  50%,
+  100% {
+    opacity: 1;
+  }
+  25%,
+  75% {
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes matrix-rain {
+  0% {
+    transform: translateY(-100%);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+
+@keyframes particle-float {
+  0% {
+    transform: translateY(100vh) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100px) translateX(50px);
+    opacity: 0;
+  }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+.animate-pulse-neon {
+  animation: pulse-neon 2s ease-in-out infinite;
+}
+.animate-glitch {
+  animation: glitch 5s infinite;
+}
+.animate-orbit {
+  animation: orbit 8s linear infinite;
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out forwards;
+}
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 229, 255, 0.3) 50%,
+    transparent 100%
+  );
+  background-size: 200% auto;
+  animation: shimmer 2s linear infinite;
+}
+
+/* Staggered delays */
+.delay-100 {
+  animation-delay: 0.1s;
+}
+.delay-200 {
+  animation-delay: 0.2s;
+}
+.delay-300 {
+  animation-delay: 0.3s;
+}
+.delay-400 {
+  animation-delay: 0.4s;
+}
+.delay-500 {
+  animation-delay: 0.5s;
+}
+.delay-700 {
+  animation-delay: 0.7s;
+}
+.delay-1000 {
+  animation-delay: 1s;
+}
+
+/* Typing cursor */
+.typing-cursor::after {
+  content: "|";
+  animation: blink 1s step-end infinite;
+  color: var(--neon-cyan);
+}
+
+/* Tab active glow */
+.tab-active {
+  background: rgba(0, 229, 255, 0.1);
+  border-bottom: 2px solid var(--neon-cyan);
+  color: var(--neon-cyan);
+}
+
+/* Code block */
+.code-block {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 8px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+
+/* Progress bar neon */
+.progress-neon {
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-violet));
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
 }
