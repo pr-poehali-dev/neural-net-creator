@@ -1,8 +1,15 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
 import { generate } from '@/lib/generator';
+import {
+  trainModel,
+  generateSmart,
+  isModelReady,
+  getIsTraining,
+} from '@/lib/nikolaNet';
 
 type GenType = 'text' | 'code' | 'image';
+type GenMode = 'nikola' | 'template';
 
 const codeLanguages = ['Python', 'JavaScript', 'TypeScript', 'Go', 'Rust', 'Java', 'C++', 'Swift', 'PHP', 'SQL', 'Bash'];
 const textStyles = ['Статья', 'Пост для соцсетей', 'Email', 'Сценарий', 'Описание товара', 'Идеи и брейншторм'];
@@ -11,6 +18,7 @@ const RUNNABLE_IN_BROWSER = ['JavaScript', 'TypeScript'];
 
 const GeneratorPage = () => {
   const [activeType, setActiveType] = useState<GenType>('text');
+  const [genMode, setGenMode] = useState<GenMode>('nikola');
   const [prompt, setPrompt] = useState('');
   const [selectedLang, setSelectedLang] = useState('Python');
   const [selectedStyle, setSelectedStyle] = useState('Статья');
@@ -22,6 +30,29 @@ const GeneratorPage = () => {
   const [runOutput, setRunOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Состояние нейросети
+  const [nnReady, setNnReady] = useState(false);
+  const [nnTraining, setNnTraining] = useState(false);
+  const [nnProgress, setNnProgress] = useState(0);
+  const [nnLoss, setNnLoss] = useState(0);
+
+  useEffect(() => {
+    setNnReady(isModelReady());
+    setNnTraining(getIsTraining());
+  }, []);
+
+  const handleTrain = async () => {
+    if (nnTraining || nnReady) return;
+    setNnTraining(true);
+    setNnProgress(0);
+    await trainModel((p, loss) => {
+      setNnProgress(p);
+      setNnLoss(loss);
+    });
+    setNnReady(true);
+    setNnTraining(false);
+  };
 
   const tabs: { id: GenType; label: string; icon: string; color: string }[] = [
     { id: 'text', label: 'Текст', icon: 'FileText', color: 'var(--neon-violet)' },
@@ -38,6 +69,35 @@ const GeneratorPage = () => {
     setTokensUsed(0);
     setProgress(0);
 
+    // Режим NikolaNet — настоящая нейросеть, посимвольный стриминг
+    if (genMode === 'nikola' && activeType !== 'image') {
+      if (!nnReady) {
+        setError('Сначала обучи нейросеть — нажми кнопку «Обучить» выше');
+        setIsGenerating(false);
+        return;
+      }
+      try {
+        let buf = '';
+        await generateSmart(
+          prompt,
+          activeType === 'code' ? 'code' : 'text',
+          (char) => {
+            buf += char;
+            setResult(buf);
+            setProgress(Math.min(99, Math.round((buf.length / 400) * 100)));
+          },
+        );
+        setTokensUsed(buf.split(/\s+/).length);
+      } catch (e) {
+        setError(String(e));
+      } finally {
+        setProgress(100);
+        setIsGenerating(false);
+      }
+      return;
+    }
+
+    // Режим Template — быстрый шаблонный генератор
     const progressInterval = setInterval(() => {
       setProgress(p => p < 85 ? p + Math.random() * 8 : p);
     }, 300);
@@ -132,10 +192,77 @@ const GeneratorPage = () => {
         <div className="py-8 mb-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono-plex mb-4"
             style={{ background: 'rgba(0, 229, 255, 0.08)', border: '1px solid rgba(0, 229, 255, 0.2)', color: 'var(--neon-cyan)' }}>
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--neon-green)' }} />
-            NEXUSGEN · ЛОКАЛЬНО · БЕЗ API
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse"
+              style={{ background: nnReady ? 'var(--neon-green)' : nnTraining ? '#ffaa00' : '#666' }} />
+            {nnReady ? 'NIKOLANET · НЕЙРОСЕТЬ ГОТОВА' : nnTraining ? `ОБУЧЕНИЕ · ${nnProgress}%` : 'NIKOLANET · НЕ ОБУЧЕНА'}
           </div>
           <h1 className="font-orbitron font-bold text-3xl md:text-4xl gradient-text">ГЕНЕРАТОР</h1>
+        </div>
+
+        {/* NikolaNet Training Panel */}
+        <div className="mb-6 rounded-2xl p-5"
+          style={{ background: 'rgba(5,8,15,0.8)', border: '1px solid rgba(0,229,255,0.15)' }}>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            {/* Статус */}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-2 h-2 rounded-full"
+                  style={{ background: nnReady ? 'var(--neon-green)' : nnTraining ? '#ffaa00' : '#444', boxShadow: nnReady ? '0 0 6px var(--neon-green)' : 'none' }} />
+                <span className="font-orbitron text-xs tracking-wider"
+                  style={{ color: nnReady ? 'var(--neon-green)' : nnTraining ? '#ffaa00' : 'var(--neon-cyan)' }}>
+                  {nnReady ? 'НЕЙРОСЕТЬ АКТИВНА' : nnTraining ? 'ОБУЧЕНИЕ...' : 'NIKOLANET — LSTM НЕЙРОСЕТЬ'}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {nnReady
+                  ? `Модель обучена · потеря: ${nnLoss.toFixed(3)} · готова к генерации`
+                  : nnTraining
+                  ? `Эпоха ${nnProgress}% · потеря: ${nnLoss.toFixed(3)} · обучаю на русских текстах...`
+                  : 'Символьная LSTM, 128 нейронов, обучается прямо в браузере на русских текстах'}
+              </p>
+              {nnTraining && (
+                <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                  <div className="h-full rounded-full transition-all duration-300"
+                    style={{ width: `${nnProgress}%`, background: 'linear-gradient(90deg, var(--neon-cyan), var(--neon-violet))' }} />
+                </div>
+              )}
+            </div>
+
+            {/* Кнопки */}
+            <div className="flex items-center gap-2">
+              {!nnReady && !nnTraining && (
+                <button onClick={handleTrain}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold font-ibm transition-all duration-300"
+                  style={{ background: 'linear-gradient(135deg, var(--neon-cyan), var(--neon-violet))', color: '#000' }}>
+                  Обучить нейросеть
+                </button>
+              )}
+              {nnReady && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setGenMode('nikola')}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold transition-all"
+                    style={{
+                      background: genMode === 'nikola' ? 'linear-gradient(135deg, var(--neon-cyan), var(--neon-violet))' : 'rgba(255,255,255,0.05)',
+                      color: genMode === 'nikola' ? '#000' : 'var(--neon-cyan)',
+                      border: '1px solid rgba(0,229,255,0.3)',
+                    }}>
+                    🧠 NikolaNet
+                  </button>
+                  <button
+                    onClick={() => setGenMode('template')}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold transition-all"
+                    style={{
+                      background: genMode === 'template' ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)',
+                      color: genMode === 'template' ? '#fff' : 'var(--muted-foreground)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                    }}>
+                    📄 Шаблон
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Type Tabs */}
@@ -348,18 +475,20 @@ const GeneratorPage = () => {
                   </div>
                 )}
 
-                {isGenerating && (
+                {isGenerating && !result && (
                   <div className="h-full flex flex-col items-center justify-center gap-6">
                     <div className="relative w-16 h-16">
                       <div className="absolute inset-0 rounded-full animate-spin-slow"
                         style={{ background: 'conic-gradient(var(--neon-cyan), var(--neon-violet), transparent)' }} />
                       <div className="absolute inset-1 rounded-full flex items-center justify-center"
                         style={{ background: 'hsl(220, 20%, 7%)' }}>
-                        <Icon name="Bot" size={24} style={{ color: 'var(--neon-cyan)' }} />
+                        <Icon name="Brain" size={24} style={{ color: 'var(--neon-cyan)' }} />
                       </div>
                     </div>
                     <div className="text-center">
-                      <p className="font-mono-plex text-sm neon-text-cyan mb-1">NEXUSGEN РАБОТАЕТ</p>
+                      <p className="font-mono-plex text-sm neon-text-cyan mb-1">
+                        {genMode === 'nikola' ? 'NIKOLANET ДУМАЕТ...' : 'ГЕНЕРИРУЮ...'}
+                      </p>
                       <p className="text-xs text-muted-foreground">{Math.round(progress)}%</p>
                     </div>
                   </div>
@@ -380,6 +509,10 @@ const GeneratorPage = () => {
                     activeType === 'code' ? 'font-mono-plex code-block p-4' : 'font-ibm'
                   }`}>
                     {result}
+                    {isGenerating && (
+                      <span className="inline-block w-2 h-4 ml-0.5 align-middle animate-pulse"
+                        style={{ background: 'var(--neon-cyan)', borderRadius: 2 }} />
+                    )}
                   </pre>
                 )}
 

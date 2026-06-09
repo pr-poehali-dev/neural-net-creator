@@ -64,17 +64,14 @@ const HomePage = ({ onNavigate }: HomePageProps) => {
         {/* Main heading */}
         <h1 className="animate-fade-in-up delay-100 font-orbitron font-black mb-6 leading-tight"
           style={{ fontSize: 'clamp(2.5rem, 8vw, 6rem)', opacity: 0, animationFillMode: 'forwards' }}>
-          <span className="gradient-text">NEXUS</span>
+          <span className="gradient-text">НИКОЛА</span>
           <br />
-          <span className="text-foreground">ARTIFICIAL</span>
-          <br />
-          <span className="gradient-text animate-glitch">INTELLIGENCE</span>
+          <span className="text-foreground">ГИМНАЗИСТ</span>
         </h1>
 
         <p className="animate-fade-in-up delay-200 text-muted-foreground max-w-xl mb-10 text-lg leading-relaxed font-ibm"
           style={{ opacity: 0, animationFillMode: 'forwards' }}>
-          Платформа нейросетей нового поколения. Генерируй изображения, тексты и программный код
-          с помощью передовых ИИ-моделей.
+          Нейросеть прямо в браузере — без API, без ключей. Настоящий ИИ, который учится и генерирует тексты и код.
         </p>
 
         {/* CTA Buttons */}

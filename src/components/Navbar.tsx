@@ -42,7 +42,7 @@ const Navbar = ({ activePage, setActivePage, user, onAuthOpen }: NavbarProps) =>
               </div>
             </div>
           </div>
-          <span className="font-orbitron font-black text-lg gradient-text tracking-wider">NEXUS AI</span>
+          <span className="font-orbitron font-black text-lg gradient-text tracking-wider">НИКОЛА</span>
         </button>
 
         {/* Nav Items */}
